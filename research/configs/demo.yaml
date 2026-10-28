@@ -1,0 +1,14 @@
+run_id: demo
+source_run_id: full_seed42
+model: resnet18
+seed: 2026
+train_per_class: 20
+validation_per_class: 20
+test_per_class: 10
+external_per_class: 8
+batch_size: 8
+image_size: 224
+device: auto
+target_risk: 0.1
+min_coverage: 0.2
+purpose: demo

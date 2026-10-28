@@ -1,0 +1,12 @@
+export interface ModelInfo { id: string; model_name: string; run_id: string | null; checkpoint_available: boolean; calibration_available: boolean }
+export interface Bin { lower: number; upper: number; count: number; confidence: number | null; accuracy: number | null }
+export interface CalibrationMetrics { ece: number; brier: number; bins: Bin[]; confidence_histogram: { lower: number; upper: number; correct: number; incorrect: number }[] }
+export interface Selective { threshold: number; coverage: number; risk: number | null; accuracy: number | null; accepted: number; total: number }
+export interface Domain { classification: { n: number; accuracy: number; balanced_accuracy: number; macro_f1: number; macro_precision: number; macro_recall: number; metric_classes?: string[] }; raw: CalibrationMetrics; calibrated: CalibrationMetrics; selective: Selective; risk_curve: Selective[] }
+export interface Evaluation { id: string; run_id: string; model_name: string; purpose: string; pretrained_loaded: boolean; classes: string[]; domains: Record<string, Domain>; calibration: { temperature: number; validation_nll_before: number; validation_nll_after: number; selection: Selective & { constraint_satisfied: boolean; procedure: string } }; domain_gap: { accuracy: number; macro_f1: number } | null; efficiency: { parameters: number; checkpoint_mb: number; latency_ms_median: number; latency_ms_p95: number; device: string; protocol: string }; external_status: string; protocol: string; source_run_id?: string; source_checkpoint_sha256?: string }
+export interface DatasetSummary { run_id: string; purpose: string; counts: Record<string, Record<string, number>>; classes: string[]; corrupt: number; external_excluded: number }
+export interface ResultsResponse { results: Evaluation[]; datasets: DatasetSummary[]; warnings: string[]; next_command: string }
+export interface Health { status: string; models: ModelInfo[]; results_available: boolean; dataset_reports_available: boolean }
+export interface Prediction { model_id: string; purpose: string; predicted_class: string; raw_confidence: number; calibrated_confidence: number | null; abstained: boolean | null; threshold: number | null; top_k: { class_name: string; probability: number }[]; probability_type: string; notice: string }
+export interface Experiment { id: string; training: string; in_domain: string; external: string; calibration: string; efficiency: string; missing_outputs: string[] }
+export interface Plot { name: string; run_id: string; url: string }

@@ -1,0 +1,19 @@
+run_id: full_seed42
+study_id: full
+seed: 42
+split_seed: 42
+leaf_group_policy: official_with_filename_fallback
+models: [resnet18, mobilenet_v3_small]
+epochs: 30
+batch_size: 8
+image_size: 224
+learning_rate: 0.0001
+pretrained: true
+allow_random_fallback: false
+mode: fine_tuning
+device: auto
+patience: 5
+max_groups_per_class: null
+target_risk: 0.1
+min_coverage: 0.2
+purpose: research

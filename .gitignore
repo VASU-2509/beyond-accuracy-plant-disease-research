@@ -1,0 +1,57 @@
+# Python environments and generated files
+.venv/
+venv/
+env/
+.tools/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node.js and frontend build output
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/
+frontend/AGENTS.md
+
+# Local environment and credentials; keep only example templates
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+
+# Local datasets, generated reports, plots, and model artifacts
+/data/**
+!/data/.gitkeep
+/artifacts/**
+!/artifacts/.gitkeep
+docs/preflight_*.json
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.npz
+*.sqlite
+*.sqlite3
+*.db
+*.log
+*.tmp
+*.partial
+
+# Local caches and temporary files
+.cache/
+cache/
+tmp/
+temp/

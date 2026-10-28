@@ -1,0 +1,11 @@
+.git
+.venv
+.tools
+frontend
+data
+artifacts
+**/__pycache__
+**/.env
+**/.env.local
+**/tests
+*.egg-info

@@ -1,0 +1,10 @@
+-r ../backend/requirements.txt
+torch==2.6.0
+torchvision==0.21.0
+numpy>=2,<3
+scipy>=1.15,<2
+scikit-learn>=1.6,<2
+matplotlib>=3.10,<4
+PyYAML>=6,<7
+huggingface-hub>=0.30,<2
+psutil>=7,<8

@@ -1,0 +1,16 @@
+run_id: quick
+seed: 42
+models: [resnet18, mobilenet_v3_small]
+epochs: 1
+batch_size: 4
+image_size: 64
+learning_rate: 0.001
+pretrained: false
+allow_random_fallback: false
+mode: fine_tuning
+device: cpu
+patience: 2
+max_groups_per_class: 12
+target_risk: 0.1
+min_coverage: 0.2
+purpose: smoke
