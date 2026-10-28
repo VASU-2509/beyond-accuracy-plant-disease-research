@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: beyond-accuracy-api
+    runtime: python
+    plan: standard
+    buildCommand: >-
+      python -m pip install --upgrade pip &&
+      python -m pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0
+      --index-url https://download.pytorch.org/whl/cpu &&
+      python -m pip install --no-cache-dir -r backend/requirements-inference.txt &&
+      python -m pip install --no-cache-dir --no-deps -e .
+    startCommand: mkdir -p "$RESEARCH_STORAGE_ROOT/tmp" "$ARTIFACTS_DIR" && exec uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    disk:
+      name: model-artifacts
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: RESEARCH_STORAGE_ROOT
+        value: /var/data
+      - key: ARTIFACTS_DIR
+        value: /var/data/artifacts
+      - key: DATA_DIR
+        value: /var/data/not-used-for-inference
+      - key: CORS_ORIGINS
+        sync: false

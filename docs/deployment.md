@@ -1,103 +1,87 @@
-# Local verification and deployment
+# Public deployment preparation
 
-## Architecture decision
+This repository is prepared for a **Vercel frontend and Render FastAPI backend**. No service has been created or deployed from this repository, and no cloud URL has been tested. The deployment requires separately transferring the model/evaluation artifacts described below; neither Git nor this configuration uploads them.
 
-Deploy Next.js to Vercel and FastAPI to a separate persistent Python/container host. Training stays offline. The backend needs only code, runtime dependencies, selected trusted checkpoints, calibration sidecars and selected result/plot files. Raw datasets are not required for serving.
+## Readiness and runtime requirements
 
-Vercel supports Python, but the [current limits page](https://vercel.com/docs/functions/limitations) lists a 500 MB uncompressed Python function limit, with larger-function options in beta. It also imposes memory, execution-time and request-size limits. The installed Windows research environment is about 1.6 GiB; this is not a Linux deployment-size measurement, but it makes assuming a small serverless bundle unjustified. PyTorch imports and checkpoint loading also affect cold starts. Large-function beta availability would still require independent packaging, cold-start and request-limit validation. No combined Vercel/PyTorch deployment is implemented or claimed tested.
+- The frontend reads the backend origin from `NEXT_PUBLIC_API_BASE_URL`. Set it in Vercel before building; it is public and compiled into browser code.
+- FastAPI reads `CORS_ORIGINS` as a JSON list of exact browser origins. Set it in Render after Vercel provides the production URL.
+- Set `RESEARCH_STORAGE_ROOT` to an absolute Linux path. Without it, the research storage configuration defaults to a Windows `D:` path and backend startup fails on Render/Linux.
+- FastAPI imports CPU PyTorch and serves a checkpoint from `ARTIFACTS_DIR`. The Render blueprint installs the CPU-only PyTorch wheels and mounts a 1 GB persistent disk at `/var/data`.
+- The app does not need the raw PlantVillage or PlantDoc images at inference time. The demo prediction/evaluation pages do need the checkpoint, calibration sidecar, evaluation JSON, dataset summary, and result plots.
 
-The supplied Dockerfile is a separate service option. Choose a host that supports persistent Python processes or containers and enough disk/RAM. A local machine behind an appropriately secured gateway is another demonstration option. Free tiers may sleep or have insufficient resources; paid hosting is not required by this code. Compare current provider terms yourself before enabling billing. The framework imposes no specific hosting provider.
-
-## 1. Verify locally
-
-From **repository root**, run the README's dependency and quick-run commands, then:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q --basetemp .tools/pytest-temp
-```
-
-From **frontend/**:
-
-```powershell
-npm.cmd ci
-npm.cmd run typecheck
-npm.cmd test
-npm.cmd run build
-npm.cmd run start
-```
-
-From **backend/** in a separate terminal:
-
-```powershell
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Check health, actual image upload, charts, missing artifacts, and CORS before using cloud services. Run `npx.cmd playwright test` from **frontend/** with the servers running. Do not deploy a smoke model as if it were a validated disease classifier.
-
-## 2. Create a GitHub repository
-
-Create an empty repository in your own GitHub account. From **repository root**, use the README's `git init`, add, review, commit, remote and push commands. No credentials belong in the repository. `.gitignore` excludes data, checkpoints, generated outputs, `.env`, virtual environments and build caches. Review staged files before the first push. GitHub account creation and repository publishing are user actions; they were not performed automatically.
-
-## 3. Prepare a backend artifact bundle
-
-Select a single verified run. Preserve this structure on the backend host:
+The local demo artifact bundle is currently present under `D:\plant-disease-research-data\demo\artifacts`, but is intentionally excluded from GitHub. Its required runtime files are:
 
 ```text
-/srv/artifacts/
-  models/<run>/resnet18.pt
-  models/<run>/resnet18.calibration.json
-  models/<run>/mobilenet_v3_small.pt
-  models/<run>/mobilenet_v3_small.calibration.json
-  results/<run>/*_evaluation.json
-  reports/<run>/dataset_summary.json
-  plots/<run>/*.png
+artifacts/
+  models/demo/resnet18.pt
+  models/demo/resnet18.calibration.json
+  results/demo/resnet18_evaluation.json
+  reports/demo/dataset_summary.json
+  plots/demo/resnet18_in_domain_confusion.png
 ```
 
-Transfer with an authenticated host console, SSH/SFTP or a private object-store download using server-side credentials. Verify SHA-256 hashes against saved evaluation records after transfer. Calibration sidecars contain the expected checkpoint checksum. Never accept arbitrary public checkpoint URLs or untrusted pickle artifacts. Mount artifacts read-only for serving when practical. Do not commit weights just to deploy them.
+The checkpoint is about 44.9 MB. The calibration sidecar is bound to the checkpoint checksum; transfer both without modifying either. Do not upload model files to a public Git repository or public bucket. The checkpoint's public redistribution rights have not been established. Transfer only to a private Render disk using a private, approved method, and verify the checkpoint SHA-256 after transfer. Do not copy raw datasets, training histories, logits, prediction CSV/NPZ files, or PDFs unless there is a separate need.
 
-## 4. Run FastAPI on a Python host
+These are the minimum files for the demo prediction and evaluation pages. The UI displays its confusion matrix from the PNG above; model comparison and calibration charts are rendered from the evaluation JSON. Other plot images are not required.
 
-Without Docker, from **repository root on the host**:
+## Cost and availability
 
-```bash
-python3.11 -m venv .venv
-.venv/bin/python -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
-.venv/bin/python -m pip install -r backend/requirements-inference.txt
-.venv/bin/python -m pip install --no-deps -e .
-export ARTIFACTS_DIR=/srv/artifacts
-export CORS_ORIGINS='["https://YOUR-FRONTEND.vercel.app"]'
-.venv/bin/python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+- Vercel Hobby currently lists a $0/month plan; usage, account eligibility, and plan terms can change.
+- Render Free web services have 512 MB RAM, spin down after 15 minutes idle, and do not support persistent disks. That is not a suitable dependable configuration for this PyTorch checkpoint plus persistent result bundle.
+- The included Render blueprint uses a paid Standard service (1 CPU, 2 GB RAM) and a 1 GB persistent disk. Check [Render's live pricing](https://render.com/pricing) before creating the service; the total is the service compute plus disk and any applicable usage/tax. There is no cost commitment until you create/upgrade the service.
+
+For a one-time teacher demonstration, start the Render paid service only when needed and review its billing settings. A free backend is possible only as a best-effort experiment with a potentially unavailable checkpoint after restarts; it is not the recommended configuration.
+
+## Deploy Next.js to Vercel
+
+1. Import the GitHub repository into Vercel and set **Root Directory** to `frontend`.
+2. Use the detected Next.js framework, `npm ci` for installation, and `npm run build` for the build. The frontend declares Node.js `>=22.9`; use a supported Node 24 release.
+3. Deploy once to obtain the exact production origin, for example `https://YOUR-PROJECT.vercel.app`. API-backed pages will remain unavailable until the backend URL is configured.
+
+## Deploy FastAPI to Render
+
+1. Sign in to Render and create a Blueprint from this GitHub repository. Select the repository root so Render reads [`render.yaml`](../render.yaml).
+2. Review the proposed paid Standard web service and 1 GB disk before confirming. Do not proceed if you do not approve the displayed billing.
+3. When prompted for `CORS_ORIGINS`, enter a JSON array with the exact production frontend origin from Vercel:
+
+   ```text
+   ["https://YOUR-PROJECT.vercel.app"]
+   ```
+
+   Do not include a path or trailing slash. Add an exact preview origin only if needed. Avoid `*`.
+4. Wait for the backend health check at `/health`. An HTTP success alone does not mean model artifacts are installed; `/api/models` and `/health` show whether the checkpoint and evaluation results are available.
+5. Transfer the five required files to the persistent disk, preserving their paths under `/var/data/artifacts/`, using a private approved method. Do not place credentials in the repository or a `NEXT_PUBLIC_` variable. The service start command creates the writable temp and artifact directories on the mounted disk.
+6. Confirm the following backend endpoints:
+
+   ```text
+   https://YOUR-BACKEND.onrender.com/health
+   https://YOUR-BACKEND.onrender.com/api/models
+   https://YOUR-BACKEND.onrender.com/api/results/summary
+   https://YOUR-BACKEND.onrender.com/docs
+   ```
+
+   Confirm the `demo__resnet18` model reports `checkpoint_available: true` and calibration/results are present.
+
+## Connect and verify the frontend
+
+1. In Vercel, set `NEXT_PUBLIC_API_BASE_URL` to the backend HTTPS origin with no trailing slash, such as `https://YOUR-BACKEND.onrender.com`. Set it for Production and any Preview environments you intend to use.
+2. Redeploy the frontend so the public environment value is included in its build.
+3. Open the Vercel site, upload a small JPEG/PNG/WebP image, and verify a prediction. Open **Demo evaluation** and confirm the evaluation summary and confusion-matrix plot load.
+
+## Keep local development unchanged
+
+The checked-in frontend example remains local:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Use the host's process manager, HTTPS endpoint and assigned port. One worker is the default to avoid duplicating model RAM. Rate-limit public uploads and set a reverse-proxy body limit consistent with the app's 8 MiB file policy; authentication can be added at the gateway if the demonstration should be private. This application has no remote training endpoint. No private environment variable should use a `NEXT_PUBLIC_` prefix.
+For local FastAPI, continue using the commands and artifact paths in the [teacher demonstration guide](demo_guide.md). Cloud environment variables belong in the provider dashboards, not `.env.local` or source control. The Render blueprint's Linux storage root applies only to the cloud service.
 
-### Container option
+## Remaining limitations
 
-From **repository root**, with Docker installed:
-
-```bash
-docker build -f backend/Dockerfile -t plant-reliability-api .
-docker run --rm -p 8000:8000 \
-  -v /ABSOLUTE/PATH/TO/artifacts:/srv/artifacts:ro \
-  -e ARTIFACTS_DIR=/srv/artifacts \
-  -e 'CORS_ORIGINS=["https://YOUR-FRONTEND.vercel.app"]' \
-  plant-reliability-api
-```
-
-This Docker path is prepared, not validated unless explicitly recorded in `validation.md`. Do not assume host-local paths exist inside a container; use the volume mount. Host download credentials must remain server-side. Persistent disk/object storage setup is a user/provider action.
-
-## 5. Deploy Next.js to Vercel
-
-1. Sign in to Vercel and import your GitHub repository.
-2. Set **Root Directory** to `frontend` and framework to Next.js.
-3. Use Node.js 24 LTS where supported, install command `npm ci`, build command `npm run build`, and the framework default output directory.
-4. Set `NEXT_PUBLIC_API_BASE_URL=https://YOUR-BACKEND-DOMAIN` for the intended production/preview environments. This value is public and compiled into the browser bundle; never place secrets here.
-5. Deploy. The backend must be HTTPS to avoid mixed-content blocking.
-6. Configure the backend's `CORS_ORIGINS` with the exact deployed frontend origin. Add specific preview origins only when needed; do not use a blanket wildcard for a private service.
-7. After env changes, redeploy Next.js and restart FastAPI. Git pushes trigger deployment if the repository integration is enabled.
-
-## 6. Verify production
-
-Open `/health`, `/api/models`, `/api/results/summary`, and `/docs` on the backend domain. Health status means the HTTP service is running; inspect checkpoint/result flags for actual readiness. Then open the Vercel application and visit all six pages. Upload a small image to each available model, verify purpose/calibration/abstention labels, and open one figure URL. Test an invalid file and a missing-model selection through API docs. Verify an unavailable backend displays the retry message.
-
-Inspect provider logs for cold starts, memory pressure, request rejections and inference failures. Measure cloud latency separately; laptop forward-only latency is not a cloud service-level claim. Configure spending controls before using any paid resource. This project does not perform account creation, paid provisioning or production deployment automatically.
+- Deployment has not been performed or verified; service URLs, provider account setup, billing approval, artifact transfer, and production image-upload testing remain user/provider steps.
+- No model or dataset distribution permission is implied by this configuration.
+- A cold start or CPU inference can take longer than local development. Confirm the deployed provider's timeout and memory limits under real use.
+- This demonstration is not a validated agricultural diagnostic service.
